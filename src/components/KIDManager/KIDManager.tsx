@@ -353,7 +353,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
               <div className="mb-4">
                 {processingSteps[processingStep].icon}
               </div>
-              <p className="text-lg font-semibold mb-2">Traitement en cours</p>
+              <p className="text-lg font-semibold text-black mb-2">Traitement en cours</p>
               <p className="text-gray-600 text-center">{processingSteps[processingStep].message}</p>
               <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
                 <div 
@@ -392,7 +392,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
               onChange={handleFileChange}
               className="hidden"
             />
-            Ajouter des KIDs
+            Ajouter un Rapport
           </label>
         </div>
       </div>
@@ -575,7 +575,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
               </div>
               {kids.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                  <p>Aucun KID uploadé. Utilisez le bouton en haut pour ajouter des documents.</p>
+                  <p>Aucun Rapport uploadé. Utilisez le bouton en haut pour ajouter des documents.</p>
                 </div>
               )}
             </div>
