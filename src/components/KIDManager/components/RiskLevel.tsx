@@ -1,12 +1,11 @@
 import React from 'react';
 
 interface RiskLevelProps {
-  riskIndicator: string;
-  level?: number;
+  level: number;
 }
 
-const RiskLevel: React.FC<RiskLevelProps> = ({ riskIndicator }) => {
-  const currentLevel = parseInt(riskIndicator) || 1;
+const RiskLevel: React.FC<RiskLevelProps> = ({ level }) => {
+  const currentLevel = level || 1;
   const maxLevel = 7;
 
   return (

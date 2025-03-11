@@ -6,43 +6,157 @@ import KeyInformation from './components/KeyInformation';
 import AdvancedAnalytics from './components/AdvancedAnalytics';
 import KIDExplorer from './components/KIDExplorer';
 import JsonViewer from './components/JsonViewer';
-import { KID } from './types';
+import RiskMatrix from './components/RiskMatrix';
+import ComplianceTable from './components/ComplianceTable';
+import { KID, Costs } from './types';
 import { defaultKidData } from '../../data/defaultKidData';
-import { KIDService } from '../../services/kidService';
-import { useApi } from '../../hooks/useApi';
-import { useToast } from '../Toast/Toast';
-import { LoadingSpinner } from '../LoadingSpinner/LoadingSpinner';
-import DemoWarning from './components/DemoWarning';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 // Configuration du worker PDF
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+interface RiskData {
+  id: string;
+  name: string;
+  probability: number;
+  impact: number;
+  category: 'environmental' | 'social' | 'governance';
+  griMappings: Array<{
+    code: string;
+    name: string;
+    status: 'detected' | 'missing';
+  }>;
+  history: Array<{
+    date: string;
+    probability: number;
+    impact: number;
+  }>;
+}
+
+// Données d'exemple pour la matrice de risques
+const mockRisks: RiskData[] = [
+  {
+    id: "emissions_co2",
+    name: "Émissions de CO2",
+    probability: 4,
+    impact: 5,
+    category: "environmental",
+    griMappings: [
+      { code: "305", name: "Émissions", status: "detected" },
+      { code: "302", name: "Énergie", status: "detected" },
+      { code: "307", name: "Conformité environnementale", status: "missing" }
+    ],
+    history: [
+      { date: "2022-01", probability: 5, impact: 4 },
+      { date: "2022-06", probability: 5, impact: 4 },
+      { date: "2023-01", probability: 4, impact: 5 },
+      { date: "2023-06", probability: 4, impact: 5 },
+      { date: "2024-01", probability: 4, impact: 5 }
+    ]
+  },
+  {
+    id: "droits_travailleurs",
+    name: "Droits des travailleurs",
+    probability: 3,
+    impact: 4,
+    category: "social",
+    griMappings: [
+      { code: "401", name: "Emploi", status: "detected" },
+      { code: "402", name: "Relations employés/direction", status: "detected" },
+      { code: "407", name: "Liberté syndicale", status: "missing" }
+    ],
+    history: [
+      { date: "2022-01", probability: 4, impact: 4 },
+      { date: "2022-06", probability: 4, impact: 4 },
+      { date: "2023-01", probability: 3, impact: 4 },
+      { date: "2023-06", probability: 3, impact: 4 },
+      { date: "2024-01", probability: 3, impact: 4 }
+    ]
+  },
+  {
+    id: "ethique_affaires",
+    name: "Éthique des affaires",
+    probability: 2,
+    impact: 5,
+    category: "governance",
+    griMappings: [
+      { code: "205", name: "Anti-corruption", status: "detected" },
+      { code: "206", name: "Comportement anticoncurrentiel", status: "detected" },
+      { code: "415", name: "Politique publique", status: "missing" }
+    ],
+    history: [
+      { date: "2022-01", probability: 3, impact: 5 },
+      { date: "2022-06", probability: 3, impact: 5 },
+      { date: "2023-01", probability: 2, impact: 5 },
+      { date: "2023-06", probability: 2, impact: 5 },
+      { date: "2024-01", probability: 2, impact: 5 }
+    ]
+  },
+  {
+    id: "gestion_dechets",
+    name: "Gestion des déchets",
+    probability: 5,
+    impact: 3,
+    category: "environmental",
+    griMappings: [
+      { code: "306", name: "Déchets", status: "detected" },
+      { code: "303", name: "Eau et effluents", status: "missing" }
+    ],
+    history: [
+      { date: "2022-01", probability: 4, impact: 3 },
+      { date: "2022-06", probability: 4, impact: 3 },
+      { date: "2023-01", probability: 5, impact: 3 },
+      { date: "2023-06", probability: 5, impact: 3 },
+      { date: "2024-01", probability: 5, impact: 3 }
+    ]
+  },
+  {
+    id: "diversite",
+    name: "Diversité et inclusion",
+    probability: 3,
+    impact: 3,
+    category: "social",
+    griMappings: [
+      { code: "405", name: "Diversité et égalité des chances", status: "detected" },
+      { code: "406", name: "Lutte contre la discrimination", status: "detected" },
+      { code: "404", name: "Formation et éducation", status: "missing" }
+    ],
+    history: [
+      { date: "2022-01", probability: 3, impact: 4 },
+      { date: "2022-06", probability: 3, impact: 3 },
+      { date: "2023-01", probability: 3, impact: 3 },
+      { date: "2023-06", probability: 3, impact: 3 },
+      { date: "2024-01", probability: 3, impact: 3 }
+    ]
+  }
+];
 
 interface KIDManagerProps {
   onUpload: (files: FileList) => void;
 }
 
 export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
-  const { loading, error, callApi } = useApi();
-  const { showToast } = useToast();
   const [selectedKid, setSelectedKid] = useState<KID | null>(null);
   const [isComparing, setIsComparing] = useState(false);
   const [selectedKidsForComparison, setSelectedKidsForComparison] = useState<KID[]>([]);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
   const [pdfError, setPdfError] = useState<string>('');
-
-  // Réinitialiser l'état quand on change de KID
-  useEffect(() => {
-    setPageNumber(1);
-    setPdfError('');
-  }, [selectedKid?.id]);
-
   const [kids, setKids] = useState<KID[]>([]);
   const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false);
   const [showKIDExplorer, setShowKIDExplorer] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
+  const [showStandardsPopup, setShowStandardsPopup] = useState(false);
+  const [risks] = useState<RiskData[]>(mockRisks);
+
+  // Exemple de données pour les standards
+  const [standards] = useState([
+    { id: '1', name: 'GRI 305', score: 85, details: 'Émissions de gaz à effet de serre' },
+    { id: '2', name: 'SASB EM-IS-110a', score: 60, details: 'Gestion de l\'énergie' },
+    { id: '3', name: 'TCFD', score: 75, details: 'Divulgation des risques climatiques' },
+  ]);
 
   const processingSteps = [
     {
@@ -54,18 +168,18 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
       )
     },
     {
-      message: "Identification des sections clés...",
+      message: "Extraction des tableaux et données numériques...",
       icon: (
-        <svg className="w-8 h-8 text-purple-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        <svg className="w-8 h-8 text-purple-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3zm0 5h16" />
         </svg>
       )
     },
     {
-      message: "Envoi des résultats au LLM...",
+      message: "Identification des sections clés...",
       icon: (
-        <svg className="w-8 h-8 text-purple-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <svg className="w-8 h-8 text-purple-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
       )
     },
@@ -103,67 +217,54 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
     }
   ];
 
+  const simulateProcessing = async () => {
+    setIsProcessing(true);
+    for (let i = 0; i < processingSteps.length; i++) {
+      setProcessingStep(i);
+      // Temps d'attente plus long pour chaque étape (entre 1.5s et 2.5s)
+      await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+    }
+    setIsProcessing(false);
+    setProcessingStep(0);
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const file = files[0]; // On ne prend que le premier fichier
-      setProcessingStep(0);
-
-      const result = await callApi(async () => {
-        // Analyser le PDF avec le backend
-        await KIDService.analyzePDF(file, (progress) => {
-          // Calculer l'étape en fonction de la progression
-          if (progress < 20) {
-            setProcessingStep(0); // Analyse de la structure du document
-          } else if (progress < 40) {
-            setProcessingStep(1); // Extraction des tableaux et données numériques
-          } else if (progress < 60) {
-            setProcessingStep(2); // Identification des sections clés
-          } else if (progress < 80) {
-            setProcessingStep(3); // Extraction du contexte et des relations
-          } else if (progress < 90) {
-            setProcessingStep(4); // Traitement des images et graphiques
-          } else {
-            setProcessingStep(5); // Finalisation de l'intégration
-          }
-        });
+      await simulateProcessing();
+      
+      try {
+        // Limiter à 5 fichiers maximum
+        const newFiles = Array.from(files).slice(0, 5 - kids.length);
         
-        // Récupérer le JSON du KID
-        const kidData = await KIDService.getKIDJson();
-        
-        const newKid: KID = {
-          id: Date.now(),
+        // Utiliser les données par défaut depuis le fichier defaultKidData.ts
+        const newKids: KID[] = newFiles.map((file, index) => ({
+          id: Date.now() + index,
           name: file.name,
           url: URL.createObjectURL(file),
           file,
-          ...kidData
-        };
-        
-        return newKid;
-      });
+          ...defaultKidData
+        }));
 
-      if (result) {
-        // Révoquer les anciennes URLs et remplacer l'ancien KID
         setKids(prevKids => {
+          // Révoquer les anciennes URLs avant de les remplacer
           prevKids.forEach(kid => {
             if (kid.url.startsWith('blob:')) {
               URL.revokeObjectURL(kid.url);
             }
           });
-          return [result]; // On ne garde que le nouveau KID
+          return [...prevKids, ...newKids];
         });
-        
-        // Sélectionner automatiquement le nouveau KID
-        setSelectedKid(result);
-        setPageNumber(1);
-        setPdfError('');
-        setProcessingStep(0);
 
         if (onUpload) {
           onUpload(files);
         }
 
-        showToast('Document KID analysé avec succès', 'success');
+        // Réinitialiser les erreurs si le chargement réussit
+        setPdfError('');
+      } catch (error) {
+        console.error('Erreur lors du chargement des fichiers:', error);
+        setPdfError('Erreur lors du chargement des fichiers. Veuillez réessayer.');
       }
     }
   };
@@ -200,32 +301,6 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
   const onDocumentLoadError = (error: Error) => {
     console.error('Erreur PDF:', error);
     setPdfError('Erreur lors du chargement du PDF. Veuillez vérifier que le fichier est un PDF valide.');
-    showToast('Erreur lors du chargement du PDF', 'error');
-  };
-
-  const renderProcessingStep = () => {
-    if (!loading) return null;
-    const currentStep = processingSteps[processingStep];
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-          <div className="flex items-center space-x-4 mb-4">
-            {currentStep.icon}
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {currentStep.message}
-              </h3>
-              <div className="mt-2 h-2 bg-gray-200 rounded-full">
-                <div
-                  className="h-full bg-purple-500 rounded-full transition-all duration-500"
-                  style={{ width: `${(processingStep + 1) * 16.67}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   useEffect(() => {
@@ -238,24 +313,33 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
     };
   }, [kids]);
 
+  // Ajouter cette fonction pour gérer l'apparition du popup des standards
+  useEffect(() => {
+    if (selectedKid && !showStandardsPopup) {
+      const timer = setTimeout(() => {
+        setShowStandardsPopup(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedKid]);
+
   return (
     <div className="p-6">
-      {loading && (
+      {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-xl w-full">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex flex-col items-center">
               <div className="mb-4">
                 {processingSteps[processingStep].icon}
               </div>
-              <p className="text-lg font-semibold mb-2 text-black">Traitement en cours</p>
+              <p className="text-lg font-semibold mb-2">Traitement en cours</p>
               <p className="text-gray-600 text-center">{processingSteps[processingStep].message}</p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-4 mb-6">
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
                 <div 
                   className="bg-purple-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${(processingStep + 1) * (100 / processingSteps.length)}%` }}
                 ></div>
               </div>
-              <DemoWarning />
             </div>
           </div>
         </div>
@@ -264,7 +348,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-800">Gestionnaire de KIDs</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Plateforme de pilotage ESG</h1>
             {isComparing && (
               <button
                 onClick={exitComparison}
@@ -275,9 +359,9 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
             )}
           </div>
           <label className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors duration-200 relative">
-            {loading && (
+            {isProcessing && (
               <div className="absolute inset-0 bg-gray-100 bg-opacity-50 flex items-center justify-center">
-                <span className="text-sm text-gray-600">Chargement...</span>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
               </div>
             )}
             <input
@@ -420,7 +504,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
                       <div key={kid.id}>
                         <h3 className="font-medium text-gray-800 mb-4">Document {index + 1}</h3>
                         <div className="space-y-6">
-                          <RiskLevel riskIndicator={kid.risks.riskIndicator} />
+                          <RiskLevel level={parseInt(kid.risks.riskIndicator)} />
                           <CostBreakdown costs={kid.costs} />
                           <KeyInformation info={kid} />
                         </div>
@@ -476,7 +560,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
             </div>
 
             {/* Prévisualisation du PDF */}
-            {selectedKid && (
+            {selectedKid && !isComparing && (
               <div className="space-y-6">
                 <div className="bg-white rounded-xl p-6">         <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-gray-800">Prévisualisation</h2>
@@ -525,15 +609,12 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
                         options={{
                           cMapUrl: 'cmaps/',
                           cMapPacked: true,
-                          standardFontDataUrl: 'standard_fonts/',
-                          workerSrc: `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
+                          standardFontDataUrl: 'standard_fonts/'
                         }}
                       >
                         <Page
                           pageNumber={pageNumber}
                           width={300}
-                          renderAnnotationLayer={false}
-                          renderTextLayer={false}
                           loading={
                             <div className="flex items-center justify-center p-8">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -574,11 +655,10 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
                 {showAdvancedAnalytics ? (
                   <AdvancedAnalytics selectedKids={[selectedKid]} />
                 ) : (
-                  <>
-                    <RiskLevel riskIndicator={selectedKid.risks.riskIndicator} />
-                    <CostBreakdown costs={selectedKid.costs} />
-                    <KeyInformation info={selectedKid} />
-                  </>
+                  <div className="space-y-8">
+                    <RiskMatrix risks={risks} />
+                    <ComplianceTable standards={standards} />
+                  </div>
                 )}
               </div>
             ) : (
@@ -599,6 +679,38 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
           kids={kids}
           onClose={() => setShowKIDExplorer(false)}
         />
+      )}
+      {/* Popup des standards */}
+      {showStandardsPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Standards détectés</h3>
+              <button
+                onClick={() => setShowStandardsPopup(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Elixir détecte que ce document mentionne les standards suivants :
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-700">
+              <li>GRI 305</li>
+              <li>SASB EM-IS-110a</li>
+              <li>TCFD</li>
+            </ul>
+            <button
+              onClick={() => setShowStandardsPopup(false)}
+              className="mt-6 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+            >
+              Compris
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
