@@ -130,6 +130,71 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
   const matrixSize = 5;
   const cellSize = 60;
 
+  React.useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes tooltipArrowAppear {
+        from {
+          transform: translate(-50%, -4px) rotate(45deg);
+          opacity: 0;
+        }
+        to {
+          transform: translate(-50%, 0) rotate(45deg);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.95);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes progressBar {
+        from {
+          width: 0;
+        }
+      }
+
+      .animate-slide-in {
+        animation: slideIn 0.5s ease-out forwards;
+      }
+
+      .animate-scale-in {
+        animation: scaleIn 0.3s ease-out forwards;
+      }
+
+      .animate-progress {
+        animation: progressBar 1s ease-out forwards;
+      }
+
+      .risk-card:hover .hover-bar {
+        width: 100%;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
   const getCellColor = (probability: number, impact: number) => {
     const severity = probability * impact;
     if (severity <= 6) return 'bg-emerald-50/40';
@@ -293,12 +358,48 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-medium text-gray-700">Cartographie des Risques</h3>
-      <div className="flex items-start justify-between p-6 bg-white rounded-xl shadow-sm">
+      <div className="flex items-center justify-between animate-slide-in">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900">Cartographie des Risques</h3>
+          <p className="text-sm text-gray-500 mt-1">Analyse et suivi des risques ESG</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-2">
+            <div className="text-xs text-gray-500 mb-1">Risques identifiés</div>
+            <div className="flex items-baseline gap-1">
+              <div className="text-2xl font-bold text-rose-600">{risks.length}</div>
+              <div className="text-xs text-rose-500">risques</div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-2">
+            <div className="text-xs text-gray-500 mb-1">Niveau moyen</div>
+            <div className="flex items-baseline gap-1">
+              <div className={`text-2xl font-bold ${
+                risks.reduce((acc, risk) => acc + (risk.probability * risk.impact), 0) / risks.length <= 6
+                  ? 'text-emerald-600'
+                  : risks.reduce((acc, risk) => acc + (risk.probability * risk.impact), 0) / risks.length <= 15
+                  ? 'text-amber-600'
+                  : 'text-rose-600'
+              }`}>
+                {Math.round(risks.reduce((acc, risk) => acc + (risk.probability * risk.impact), 0) / risks.length)}
+              </div>
+              <div className={`text-xs ${
+                risks.reduce((acc, risk) => acc + (risk.probability * risk.impact), 0) / risks.length <= 6
+                  ? 'text-emerald-500'
+                  : risks.reduce((acc, risk) => acc + (risk.probability * risk.impact), 0) / risks.length <= 15
+                  ? 'text-amber-500'
+                  : 'text-rose-500'
+              }`}>/25</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-start justify-between p-6 bg-white rounded-xl shadow-sm animate-scale-in">
         <div className="relative risk-matrix" ref={matrixRef}>
           <div 
             ref={tooltipRef}
-            className={`absolute z-10 w-80 bg-white rounded-xl shadow-xl border-0 p-4
+            className={`absolute z-10 w-96 bg-white rounded-xl shadow-xl border-0 p-3
               transition-all duration-200 ease-out pointer-events-none origin-bottom
               ${hoveredRisk ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}
             style={{ 
@@ -311,10 +412,10 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
           >
             {hoveredRisk && (
               <>
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-gray-800 transition-all duration-200 ease-out">{hoveredRisk.name}</h4>
-                    <span className={`px-2 py-0.5 text-xs rounded-full transition-all duration-200 ease-out ${
+                    <h4 className="text-sm font-medium text-gray-800 transition-all duration-200 ease-out">{hoveredRisk.name}</h4>
+                    <span className={`px-2 py-0.5 text-[10px] rounded-full transition-all duration-200 ease-out ${
                       hoveredRisk.category === 'environmental' ? 'bg-green-100 text-green-800' :
                       hoveredRisk.category === 'social' ? 'bg-blue-100 text-blue-800' :
                       'bg-purple-100 text-purple-800'
@@ -322,48 +423,163 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
                       {hoveredRisk.category.charAt(0).toUpperCase() + hoveredRisk.category.slice(1)}
                     </span>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-xs text-gray-500">Impact</div>
-                      <div className="font-medium text-gray-800">{getAxisLabel(hoveredRisk.impact, 'impact')}</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="text-xs text-gray-500">Probabilité</div>
-                      <div className="font-medium text-gray-800">{getAxisLabel(hoveredRisk.probability, 'probability')}</div>
-                    </div>
-                  </div>
 
                   {hoveredRisk.griMappings && hoveredRisk.griMappings.length > 0 && (
-                    <div className="border-t border-gray-100 pt-2">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Correspondances GRI</p>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="border-t border-gray-100 pt-3">
+                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 -mx-3 px-3 py-1.5 mb-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-medium text-gray-900">Conformité vs. Référentiels</h3>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                              <span className="text-[9px] text-gray-600">Conforme</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                              <span className="text-[9px] text-gray-600">Non conforme</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
                         {hoveredRisk.griMappings.map(mapping => (
-                          <div key={mapping.code} 
-                            className={`flex items-center justify-between rounded-lg px-2 py-1 text-xs ${
-                              mapping.status === 'detected' 
-                                ? 'bg-green-50 text-green-700' 
-                                : 'bg-red-50 text-red-700'
-                            }`}
+                          <div
+                            key={mapping.code}
+                            className={`relative overflow-hidden rounded-lg border transition-all duration-300 hover:shadow-md
+                              ${mapping.status === 'detected' 
+                                ? 'border-green-100 hover:border-green-200 bg-gradient-to-r from-green-50/50 to-white' 
+                                : 'border-red-100 hover:border-red-200 bg-gradient-to-r from-red-50/50 to-white'
+                              }`}
                           >
-                            <span>GRI {mapping.code}</span>
-                            <span className="ml-2 text-xs">
-                              {mapping.status === 'detected' ? '✓' : '×'}
-                            </span>
+                            <div className="p-1.5 grid grid-cols-12 gap-2 items-center">
+                              {/* Code GRI */}
+                              <div className="col-span-2">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center
+                                  ${mapping.status === 'detected' ? 'bg-green-100' : 'bg-red-100'}`}>
+                                  <span className={`text-xs font-bold
+                                    ${mapping.status === 'detected' ? 'text-green-700' : 'text-red-700'}`}>
+                                    {mapping.code}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Nom et description */}
+                              <div className="col-span-5">
+                                <h4 className="text-xs font-medium text-gray-900 truncate">{mapping.name}</h4>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full
+                                    ${mapping.status === 'detected' 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : 'bg-red-100 text-red-700'}`}>
+                                    {mapping.status === 'detected' ? 'Conforme' : 'Non conforme'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Score circulaire */}
+                              <div className="col-span-2 flex justify-center">
+                                <div className="relative">
+                                  <svg className="w-10 h-10 transform -rotate-90">
+                                    <circle
+                                      className="text-gray-100"
+                                      strokeWidth="2"
+                                      stroke="currentColor"
+                                      fill="transparent"
+                                      r="18"
+                                      cx="20"
+                                      cy="20"
+                                    />
+                                    <circle
+                                      className={`${mapping.status === 'detected' ? 'text-green-500' : 'text-red-500'}
+                                        transition-all duration-1000 ease-out`}
+                                      strokeWidth="2"
+                                      strokeDasharray={113.1}
+                                      strokeDashoffset={mapping.status === 'detected' ? 28.3 : 84.8}
+                                      strokeLinecap="round"
+                                      stroke="currentColor"
+                                      fill="transparent"
+                                      r="18"
+                                      cx="20"
+                                      cy="20"
+                                    />
+                                  </svg>
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className={`text-[10px] font-bold
+                                      ${mapping.status === 'detected' ? 'text-green-600' : 'text-red-600'}`}>
+                                      {mapping.status === 'detected' ? '75%' : '25%'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Barre de progression */}
+                              <div className="col-span-3">
+                                <div className="space-y-1">
+                                  <div className="h-1.5 relative rounded-full overflow-hidden bg-gray-100">
+                                    <div
+                                      className={`absolute left-0 top-0 h-full transition-all duration-1000 ease-out rounded-full
+                                        ${mapping.status === 'detected' ? 'bg-green-500' : 'bg-red-500'}`}
+                                      style={{ width: mapping.status === 'detected' ? '75%' : '25%' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         ))}
+
+                        {/* Statistiques globales */}
+                        <div className="mt-1.5 bg-gray-50 rounded-lg p-2">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <h4 className="text-[10px] font-medium text-gray-700 mb-1">Taux de couverture global</h4>
+                              <div className="relative">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-bold text-gray-900">
+                                    {Math.round((hoveredRisk.griMappings.filter(m => m.status === 'detected').length / hoveredRisk.griMappings.length) * 100)}%
+                                  </span>
+                                </div>
+                                <div className="h-1.5 relative rounded-full overflow-hidden bg-gray-100">
+                                  <div
+                                    className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-1000 ease-out"
+                                    style={{ width: `${(hoveredRisk.griMappings.filter(m => m.status === 'detected').length / hoveredRisk.griMappings.length) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="text-[10px] font-medium text-gray-700 mb-1">Répartition</h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white rounded-lg p-1.5 text-center border border-gray-100">
+                                  <div className="text-base font-bold text-green-600">
+                                    {hoveredRisk.griMappings.filter(m => m.status === 'detected').length}
+                                  </div>
+                                  <div className="text-[9px] text-gray-500">Conformes</div>
+                                </div>
+                                <div className="bg-white rounded-lg p-1.5 text-center border border-gray-100">
+                                  <div className="text-base font-bold text-red-600">
+                                    {hoveredRisk.griMappings.filter(m => m.status === 'missing').length}
+                                  </div>
+                                  <div className="text-[9px] text-gray-500">Non conformes</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {hoveredRisk.history && hoveredRisk.history.length > 0 && (
-                    <div className="border-t border-gray-100 pt-2">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Évolution</p>
-                      <div className="space-y-1.5">
+                    <div className="border-t border-gray-100 pt-1.5">
+                      <p className="text-[10px] font-medium text-gray-500 mb-1">Évolution</p>
+                      <div className="space-y-0.5">
                         {hoveredRisk.history.slice(-3).reverse().map(entry => (
                           <div key={entry.date} className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1">
-                            <span className="text-xs text-gray-600">{formatDate(entry.date)}</span>
-                            <div className="flex items-center space-x-3 text-xs">
+                            <span className="text-[10px] text-gray-600">{formatDate(entry.date)}</span>
+                            <div className="flex items-center space-x-3 text-[10px]">
                               <span className="flex items-center">
                                 <span className="text-gray-500 mr-1">P:</span>
                                 <span className="font-medium text-gray-800">{entry.probability}</span>
@@ -395,10 +611,10 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
           {/* Matrix */}
           <div className="flex">
             {/* Y-axis labels */}
-            <div className="relative flex flex-col items-end mr-6 mt-16">
-              <div className="h-[300px] flex flex-col justify-between">
+            <div className="relative flex flex-col items-end mr-4 mt-12">
+              <div className="h-[225px] flex flex-col justify-between">
                 {[...Array(matrixSize)].map((_, idx) => (
-                  <div key={idx} className="text-sm text-gray-500 transform -translate-y-1/2 py-1 px-2 rounded-md hover:bg-gray-50 transition-colors duration-200">
+                  <div key={idx} className="text-xs text-gray-500 transform -translate-y-1/2 py-0.5 px-1.5">
                     {getAxisLabel(matrixSize - idx, 'probability')}
                   </div>
                 ))}
@@ -406,7 +622,7 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
             </div>
             
             <div>
-              <div className="relative backdrop-blur-sm bg-white/30 rounded-lg p-1">
+              <div className="relative backdrop-blur-sm bg-white/30 rounded-lg p-0.5">
                 {[...Array(matrixSize)].map((_, row) => (
                   <div key={row} className="flex">
                     {[...Array(matrixSize)].map((_, col) => {
@@ -424,7 +640,7 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
                             borderWidth: '1px',
                           }}
                         >
-                          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-1.5 p-1.5">
+                          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-1 p-1">
                             {cellRisks.map(risk => (
                               <div
                                 key={risk.id}
@@ -433,8 +649,8 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
                                 onMouseLeave={handleRiskLeave}
                               >
                                 <div
-                                  className={`w-5 h-5 rounded-full ${getRiskColor(risk.category)} border-2 ${getRiskBorderColor(risk.category)} 
-                                    shadow-lg transition-all duration-300 ease-out hover:scale-125 hover:shadow-xl`}
+                                  className={`w-4 h-4 rounded-full ${getRiskColor(risk.category)} border-2 ${getRiskBorderColor(risk.category)} 
+                                    shadow-sm transition-all duration-300 ease-out hover:scale-125 hover:shadow-lg`}
                                 />
                               </div>
                             ))}
@@ -447,23 +663,18 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
               </div>
 
               {/* X-axis labels */}
-              <div className="mt-4 relative" style={{ width: `${cellSize * matrixSize}px`, height: '40px' }}>
-                <div className="grid grid-cols-5 gap-0">
+              <div className="mt-4 relative" style={{ width: `${cellSize * matrixSize}px`, height: '30px' }}>
+                <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${matrixSize}, ${cellSize}px)` }}>
                   {[...Array(matrixSize)].map((_, idx) => (
                     <div 
                       key={idx} 
-                      className="flex justify-center items-start"
+                      className="text-xs text-gray-500 flex items-center justify-center px-1"
+                      style={{ 
+                        fontSize: '0.75rem',
+                        transform: 'translateX(4px)'
+                      }}
                     >
-                      <div
-                        className="text-xs text-gray-500 whitespace-nowrap px-1"
-                        style={{ 
-                          width: 'min-content',
-                          fontSize: '0.7rem',
-                          letterSpacing: '-0.02em'
-                        }}
-                      >
-                        {getAxisLabel(idx + 1, 'impact')}
-                      </div>
+                      {getAxisLabel(idx + 1, 'impact')}
                     </div>
                   ))}
                 </div>
@@ -473,38 +684,38 @@ const RiskMatrix: React.FC<RiskMatrixProps> = ({ risks = mockRisks }) => {
         </div>
 
         {/* Legend */}
-        <div className="mt-16 ml-8">
+        <div className="mt-12 ml-8">
           <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-gray-100">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Catégories de Risques</h4>
-            <div className="space-y-2.5">
+            <h4 className="text-xs font-semibold text-gray-700 mb-3">Catégories de Risques</h4>
+            <div className="space-y-2">
               <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full ${getRiskColor('environmental')} border-2 ${getRiskBorderColor('environmental')} mr-3 shadow-sm`} />
-                <span className="text-sm text-gray-600">Environnemental</span>
+                <div className={`w-4 h-4 rounded-full ${getRiskColor('environmental')} border-2 ${getRiskBorderColor('environmental')} mr-2 shadow-sm`} />
+                <span className="text-xs text-gray-600">Environnemental</span>
               </div>
               <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full ${getRiskColor('social')} border-2 ${getRiskBorderColor('social')} mr-3 shadow-sm`} />
-                <span className="text-sm text-gray-600">Social</span>
+                <div className={`w-4 h-4 rounded-full ${getRiskColor('social')} border-2 ${getRiskBorderColor('social')} mr-2 shadow-sm`} />
+                <span className="text-xs text-gray-600">Social</span>
               </div>
               <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full ${getRiskColor('governance')} border-2 ${getRiskBorderColor('governance')} mr-3 shadow-sm`} />
-                <span className="text-sm text-gray-600">Gouvernance</span>
+                <div className={`w-4 h-4 rounded-full ${getRiskColor('governance')} border-2 ${getRiskBorderColor('governance')} mr-2 shadow-sm`} />
+                <span className="text-xs text-gray-600">Gouvernance</span>
               </div>
             </div>
 
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Niveau de Risque</h4>
-              <div className="space-y-2.5">
+            <div className="mt-4">
+              <h4 className="text-xs font-semibold text-gray-700 mb-3">Niveau de Risque</h4>
+              <div className="space-y-2">
                 <div className="flex items-center">
-                  <div className="w-5 h-5 bg-emerald-50/40 border border-emerald-100 mr-3 rounded" />
-                  <span className="text-sm text-gray-600">Faible</span>
+                  <div className="w-4 h-4 bg-emerald-50/40 border border-emerald-100 mr-2 rounded" />
+                  <span className="text-xs text-gray-600">Faible</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-5 h-5 bg-amber-50/40 border border-amber-100 mr-3 rounded" />
-                  <span className="text-sm text-gray-600">Moyen</span>
+                  <div className="w-4 h-4 bg-amber-50/40 border border-amber-100 mr-2 rounded" />
+                  <span className="text-xs text-gray-600">Moyen</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-5 h-5 bg-rose-50/40 border border-rose-100 mr-3 rounded" />
-                  <span className="text-sm text-gray-600">Élevé</span>
+                  <div className="w-4 h-4 bg-rose-50/40 border border-rose-100 mr-2 rounded" />
+                  <span className="text-xs text-gray-600">Élevé</span>
                 </div>
               </div>
             </div>
@@ -522,27 +733,5 @@ const formatDate = (dateStr: string) => {
   };
   return `${months[month as keyof typeof months]} ${year}`;
 };
-
-// Ajout des keyframes pour l'animation de la flèche
-const styles = `
-@keyframes tooltipArrowAppear {
-  from {
-    transform: translate(-50%, -4px) rotate(45deg);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, 0) rotate(45deg);
-    opacity: 1;
-  }
-}
-`;
-
-// Injection des styles dans le document
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.type = 'text/css';
-  styleSheet.innerText = styles;
-  document.head.appendChild(styleSheet);
-}
 
 export default RiskMatrix; 

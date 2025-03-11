@@ -7,7 +7,7 @@ import AdvancedAnalytics from './components/AdvancedAnalytics';
 import KIDExplorer from './components/KIDExplorer';
 import JsonViewer from './components/JsonViewer';
 import RiskMatrix from './components/RiskMatrix';
-import ComplianceTable from './components/ComplianceTable';
+import ESGMetrics from './components/ESGMetrics';
 import { KID, Costs } from './types';
 import { defaultKidData } from '../../data/defaultKidData';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -131,6 +131,27 @@ const mockRisks: RiskData[] = [
     ]
   }
 ];
+
+// Données d'exemple pour les métriques ESG
+const mockESGData = {
+  riskCategories: {
+    environmental: 45,
+    social: 30,
+    governance: 25
+  },
+  emissions: {
+    scope1: 1200000,
+    scope2: 800000,
+    scope3: 3500000
+  },
+  historicalEmissions: [
+    { year: '2019', value: 6000000 },
+    { year: '2020', value: 5500000 },
+    { year: '2021', value: 5200000 },
+    { year: '2022', value: 4800000 },
+    { year: '2023', value: 4300000 }
+  ]
+};
 
 interface KIDManagerProps {
   onUpload: (files: FileList) => void;
@@ -525,7 +546,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-800">Documents KID</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">Rapports RSE/ESG</h2>
                 </div>
 
               </div>
@@ -643,7 +664,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
             {selectedKid ? (
               <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-800">Analyse du KID</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">Analyse du rapport</h2>
                   <button
                     onClick={() => setShowAdvancedAnalytics(prev => !prev)}
                     className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
@@ -657,7 +678,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
                 ) : (
                   <div className="space-y-8">
                     <RiskMatrix risks={risks} />
-                    <ComplianceTable standards={standards} />
+                    <ESGMetrics esgData={mockESGData} />
                   </div>
                 )}
               </div>
@@ -667,7 +688,7 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
                   <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-lg">Sélectionnez un KID pour voir son analyse détaillée</p>
+                  <p className="text-lg">Sélectionnez un rapport RSE/ESG pour voir son analyse détaillée</p>
                 </div>
               </div>
             )}
@@ -682,32 +703,79 @@ export const KIDManager: React.FC<KIDManagerProps> = ({ onUpload }) => {
       )}
       {/* Popup des standards */}
       {showStandardsPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Standards détectés</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center">
+                <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Standards détectés</h3>
+              </div>
               <button
                 onClick={() => setShowStandardsPopup(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 bg-gray-100 hover:bg-gray-200 rounded-full p-2"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <p className="text-gray-600 mb-4">
-              Elixir détecte que ce document mentionne les standards suivants :
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700">
-              <li>GRI 305</li>
-              <li>SASB EM-IS-110a</li>
-              <li>TCFD</li>
-            </ul>
+            
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
+              <p className="text-blue-700 font-medium">
+                Elixir détecte que ce document mentionne les standards suivants :
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center p-3 bg-green-50 rounded-lg border border-green-100 hover:shadow-md transition-all duration-200">
+                <div className="bg-green-100 p-2 rounded-full mr-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800">GRI 305</h4>
+                  <p className="text-sm text-gray-600">Émissions de gaz à effet de serre</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100 hover:shadow-md transition-all duration-200">
+                <div className="bg-blue-100 p-2 rounded-full mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800">SASB EM-IS-110a</h4>
+                  <p className="text-sm text-gray-600">Gestion de l'énergie</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-100 hover:shadow-md transition-all duration-200">
+                <div className="bg-purple-100 p-2 rounded-full mr-3">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800">TCFD</h4>
+                  <p className="text-sm text-gray-600">Divulgation des risques climatiques</p>
+                </div>
+              </div>
+            </div>
+            
             <button
               onClick={() => setShowStandardsPopup(false)}
-              className="mt-6 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+              className="mt-8 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center justify-center"
             >
-              Compris
+              <span>Compris</span>
+              <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </button>
           </div>
         </div>
