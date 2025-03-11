@@ -123,26 +123,28 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
     return num.toString();
   };
 
-  // Enhanced tooltip with performance indicators
-  const CustomPieTooltip = ({ active, payload }: any) => {
+  // Enhanced tooltip with performance indicators for ESG risks
+  const ESGRiskTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const total = data.name.includes('Scope') ? totalEmissions : totalRisks;
+      const total = totalRisks;
       const percentage = ((data.value / total) * 100).toFixed(1);
       
       return (
         <div style={{ 
-          position: 'fixed',
-          top: '20%',
-          left: '20%',
           backgroundColor: 'white',
           padding: '16px',
           borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.08)',
           border: '1px solid #e5e7eb',
           maxWidth: '20rem',
+          position: 'fixed',
+          top: '0',
+          left: '50%',
+          transform: 'translate(-50%, 0)',
           zIndex: 1000,
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          marginTop: '10px'
         }}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-base">{data.name}</h3>
@@ -156,7 +158,7 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
             </span>
           </div>
           <p className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            {data.name.includes('Scope') ? formatNumber(data.value) + ' tCO₂e' : data.value}
+            {data.value}
             <span className="text-sm text-gray-500">({percentage}%)</span>
             {data.trend && (
               <span className={`flex items-center text-sm ${data.trend < 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -179,6 +181,50 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
               </ul>
             </div>
           )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Enhanced tooltip with performance indicators for emissions
+  const EmissionsTooltip = ({ active, payload, coordinate }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const total = totalEmissions;
+      const percentage = ((data.value / total) * 100).toFixed(1);
+      
+      return (
+        <div style={{ 
+          backgroundColor: 'white',
+          padding: '16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #e5e7eb',
+          maxWidth: '20rem',
+          position: 'absolute',
+          left: coordinate?.x,
+          top: coordinate?.y + 50,
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          pointerEvents: 'none'
+        }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-900 text-base">{data.name}</h3>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              data.performance === 'strong' ? 'bg-green-100 text-green-800' :
+              data.performance === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-red-100 text-red-800'
+            }`}>
+              {data.performance === 'strong' ? 'Fort' :
+               data.performance === 'moderate' ? 'Modéré' : 'Faible'}
+            </span>
+          </div>
+          <p className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            {formatNumber(data.value) + ' tCO₂e'}
+            <span className="text-sm text-gray-500">({percentage}%)</span>
+          </p>
+          <p className="text-xs text-gray-600 mt-2">{data.description}</p>
         </div>
       );
     }
@@ -275,7 +321,9 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
             <h4 className="text-sm font-medium text-gray-700 mb-4 flex items-center justify-between">
               <span>Répartition des risques ESG</span>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">Score: A-</span>
+                <span className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-800 text-xs font-medium rounded-full whitespace-nowrap">
+                  Score: A-
+                </span>
               </div>
             </h4>
             <div className="h-64">
@@ -302,7 +350,7 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
                     ))}
                   </Pie>
                   <Tooltip 
-                    content={<CustomPieTooltip />}
+                    content={<ESGRiskTooltip />}
                     position={{ x: 20, y: 0 }}
                     cursor={false}
                     allowEscapeViewBox={{ x: true, y: true }}
@@ -333,7 +381,7 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
             <h4 className="text-sm font-medium text-gray-700 mb-4 flex items-center justify-between">
               <span>Émissions par scope</span>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                <span className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full whitespace-nowrap">
                   -15% vs 2022
                 </span>
               </div>
@@ -362,8 +410,8 @@ const ESGMetrics: React.FC<ESGMetricsProps> = ({ esgData }) => {
                     ))}
                   </Pie>
                   <Tooltip 
-                    content={<CustomPieTooltip />}
-                    position={{ x: 20, y: 0 }}
+                    content={<EmissionsTooltip />}
+                    position={{ x: 20, y: 250 }}
                     cursor={false}
                     allowEscapeViewBox={{ x: true, y: true }}
                   />
